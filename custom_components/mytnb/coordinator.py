@@ -293,5 +293,16 @@ class MyTNBDataUpdateCoordinator(DataUpdateCoordinator):
             )
             return cached[1] if cached else []
 
+        if not readings:
+            # A brand-new bill's PDF may not be published yet (or the parse
+            # found no rows). Don't cache the empty result against this
+            # billing_no, or we'd never retry until the next bill.
+            _LOGGER.debug(
+                "No meter readings for account %s bill %s; will retry next poll",
+                account_number,
+                latest_billing_no,
+            )
+            return []
+
         self._meter_reading_cache[account_number] = (latest_billing_no, readings)
         return readings

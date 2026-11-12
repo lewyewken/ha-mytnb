@@ -6,3 +6,6 @@ dist/
 .ruff_cache/
 *.log
 .DS_Store
+
+# Local credentials
+.env

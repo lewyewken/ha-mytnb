@@ -190,6 +190,38 @@ async def test_coordinator_caches_meter_readings_until_new_bill(
     assert second["220123456789"]["meter_readings"] == readings
 
 
+async def test_coordinator_retries_meter_readings_when_pdf_empty(
+    hass: HomeAssistant,
+) -> None:
+    """An empty result (PDF not yet published) must not be cached per bill."""
+    from custom_components.mytnb.meter_reading import MeterRegisterReading
+
+    mock_client = create_mock_client()
+    readings = [
+        MeterRegisterReading(
+            meter_number="SIE1052308047669",
+            previous_reading=9750.0,
+            current_reading=10319.0,
+            usage=569.0,
+            unit="kWh",
+        )
+    ]
+    coordinator = _make_coordinator(hass)
+    coordinator._client = mock_client
+
+    with patch(
+        "custom_components.mytnb.coordinator.fetch_meter_readings",
+        new=AsyncMock(side_effect=[[], readings]),
+    ) as fetch_meter_readings:
+        first = await coordinator._async_update_data()
+        coordinator.data = first
+        second = await coordinator._async_update_data()
+
+    assert first["220123456789"]["meter_readings"] == []
+    assert second["220123456789"]["meter_readings"] == readings
+    assert fetch_meter_readings.await_count == 2
+
+
 async def test_coordinator_total_failure_raises_update_failed(
     hass: HomeAssistant,
 ) -> None:
